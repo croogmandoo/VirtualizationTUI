@@ -96,12 +96,30 @@ For Caddy, `persist` writes the live config to `config_file`, `load` pushes the
 file back into the running server via `/load`, and `diff` reports drift between
 the two.
 
+## Connecting to VMware vSphere
+
+vSphere uses a session login (username + password — the documented exception to
+the tokens-only rule, since the credential is exchanged for a session and not
+persisted):
+
+```yaml
+- name: vcenter
+  type: vsphere
+  endpoint: https://vcenter.lan      # /sdk appended automatically
+  auth:
+    kind: password
+    ref: keyring                      # password resolved from the OS keyring
+    username: administrator@vsphere.local
+  tls:
+    insecure: false                   # set true only for self-signed lab certs
+```
+
 ## Roadmap (high level)
 
 1. ✅ App shell + config/secrets + provider interface
 2. ✅ **Proxmox VE** end-to-end (reference implementation)
 3. ✅ Technitium DNS + Caddy
-4. ✅ **TrueNAS** (pools, datasets, shares) → 5. VMware vSphere → 6. Unraid → 7. Hyper-V
+4. ✅ **TrueNAS** (pools, datasets, shares) → 5. ✅ **VMware vSphere** (VMs, hosts, datastores) → 6. Unraid → 7. Hyper-V
 8. Polish, packaging, releases
 
 ## License
