@@ -75,11 +75,32 @@ The keyring entry uses service `virttui` and username = the connection name
 (`pve-01`); its value is the full token credential `user@realm!tokenid=secret`.
 For headless/CI use, set `auth.ref: env` and export `VIRTTUI_PVE_01_TOKEN`.
 
+## Connecting to Technitium DNS &amp; Caddy
+
+```yaml
+connections:
+  - name: dns
+    type: technitium
+    endpoint: http://10.0.0.30:5380   # Technitium HTTP API
+    auth: { kind: token, ref: keyring } # token = a Technitium API token
+
+  - name: edge
+    type: caddy
+    endpoint: http://10.0.0.31:2019    # Caddy Admin API
+    auth: { kind: token, ref: keyring } # token unused by Caddy admin; kept for uniformity
+    extra:
+      config_file: /etc/caddy/caddy.json  # enables live↔disk persistence &amp; drift detection
+```
+
+For Caddy, `persist` writes the live config to `config_file`, `load` pushes the
+file back into the running server via `/load`, and `diff` reports drift between
+the two.
+
 ## Roadmap (high level)
 
 1. ✅ App shell + config/secrets + provider interface
 2. ✅ **Proxmox VE** end-to-end (reference implementation)
-3. Technitium DNS + Caddy
+3. ✅ Technitium DNS + Caddy
 4. TrueNAS → 5. VMware vSphere → 6. Unraid → 7. Hyper-V
 8. Polish, packaging, releases
 
