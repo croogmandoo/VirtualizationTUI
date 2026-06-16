@@ -119,7 +119,7 @@ persisted):
 1. ✅ App shell + config/secrets + provider interface
 2. ✅ **Proxmox VE** end-to-end (reference implementation)
 3. ✅ Technitium DNS + Caddy
-4. ✅ **TrueNAS** (pools, datasets, shares) → 5. ✅ **VMware vSphere** (VMs, hosts, datastores) → 6. Unraid → 7. Hyper-V
+4. ✅ **TrueNAS** (pools, datasets, shares) → 5. ✅ **VMware vSphere** (VMs, hosts, datastores) → 6. ✅ **Unraid** (array, docker, VMs, shares) → 7. Hyper-V
 8. Polish, packaging, releases
 
 ## License
