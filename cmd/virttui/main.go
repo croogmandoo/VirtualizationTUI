@@ -21,6 +21,7 @@ import (
 
 	// Register built-in providers via their init() functions.
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/caddy"
+	_ "github.com/croogmandoo/virtualizationtui/internal/provider/hyperv"
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/mock"
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/proxmox"
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/technitium"

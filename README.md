@@ -114,12 +114,30 @@ persisted):
     insecure: false                   # set true only for self-signed lab certs
 ```
 
+## Connecting to Hyper-V
+
+Hyper-V is driven via PowerShell cmdlets over **WinRM** (enable with
+`Enable-PSRemoting` on the host). Like vSphere it uses username/password — the
+documented exception to tokens-only:
+
+```yaml
+- name: hyperv
+  type: hyperv
+  endpoint: host01            # or host01:5986 / https://host01:5986 for WinRM-over-TLS
+  auth:
+    kind: password
+    ref: keyring
+    username: DOMAIN\\administrator
+  tls:
+    insecure: false           # set true to skip TLS verification on 5986
+```
+
 ## Roadmap (high level)
 
 1. ✅ App shell + config/secrets + provider interface
 2. ✅ **Proxmox VE** end-to-end (reference implementation)
 3. ✅ Technitium DNS + Caddy
-4. ✅ **TrueNAS** (pools, datasets, shares) → 5. ✅ **VMware vSphere** (VMs, hosts, datastores) → 6. ✅ **Unraid** (array, docker, VMs, shares) → 7. Hyper-V
+4. ✅ **TrueNAS** (pools, datasets, shares) → 5. ✅ **VMware vSphere** (VMs, hosts, datastores) → 6. ✅ **Unraid** (array, docker, VMs, shares) → 7. ✅ **Hyper-V** (VMs, host; PowerShell/WinRM)
 8. Polish, packaging, releases
 
 ## License

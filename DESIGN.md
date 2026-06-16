@@ -303,7 +303,7 @@ VirtualizationTUI/
 | **4** | TrueNAS ✅ | REST v2.0, API-key auth; pools/datasets/shares; enable/disable shares |
 | **5** | VMware vSphere ✅ | `govmomi`; VMs/hosts/datastores + VM power ops; tested with vcsim |
 | **6** | Unraid ✅ | Official GraphQL API (x-api-key); array/disks, docker, VMs, shares; start/stop docker & VMs |
-| **7** | Hyper-V | WinRM/PowerShell; most friction, last |
+| **7** | Hyper-V ✅ | PowerShell cmdlets over a pluggable runner (WinRM); VMs/host + power ops; unit-tested via a fake runner |
 | **8** | Polish | Command palette, theming, metrics/sparklines, packaging/releases |
 
 ---
@@ -334,8 +334,9 @@ VirtualizationTUI/
 4. **Workflow — `main` is the stable base; changes land via PRs into `main`.**
 
 ### Still open (not blocking Phase 1/2)
-5. **Hyper-V transport:** WinRM/PowerShell vs. a future REST shim — confirmed OK
-   to defer Hyper-V to Phase 7.
+5. ~~**Hyper-V transport:** WinRM/PowerShell vs. a future REST shim~~ —
+   **resolved: PowerShell cmdlets over WinRM**, behind a pluggable `CommandRunner`
+   so the provider logic is unit-tested with a fake runner. Implemented in Phase 7.
 6. ~~**Unraid API:** official Connect GraphQL API vs. local endpoints~~ —
    **resolved: official GraphQL API** (x-api-key), implemented in Phase 6.
 7. **Packaging:** Homebrew tap + scoop + raw binaries — priority order, decided
