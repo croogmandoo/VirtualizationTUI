@@ -161,7 +161,7 @@ type Action struct {
 | **TrueNAS** | REST 2.0 + WebSocket JSON-RPC | API key | HTTP client | pool, dataset, share, app, system |
 | **Unraid** | GraphQL (Connect API) / HTTP | API key / cookie | HTTP/GraphQL client | array, disk, docker, vm, share |
 | **Technitium DNS** | HTTP API | token | HTTP client | dns_zone, dns_record |
-| **Caddy** | Admin REST API (`/config`, `/load`) | local socket / token | HTTP client | route, upstream, tls_policy |
+| **Caddy** | Admin REST API (`/config`, `/load`) **+ on-disk Caddyfile/JSON** | local socket / token | HTTP client | route, upstream, tls_policy |
 
 ### Proxmox (reference implementation — built first)
 - **Auth:** API token (`PVEAPIToken=user@realm!tokenid=secret`). No password
@@ -177,6 +177,10 @@ type Action struct {
 ### Caddy & Technitium
 - Lowest-complexity HTTP/JSON; good candidates for the *second/third* providers
   to prove the abstraction generalizes beyond compute (DNS + routing kinds).
+- **Caddy manages both the live Admin API *and* an on-disk `Caddyfile`/JSON**
+  (decision): edits apply immediately via `/load`, then persist to disk so they
+  survive restarts and fit GitOps/version-control workflows. The provider tracks
+  drift between the live config and the on-disk file and surfaces it in the UI.
 
 ### Hyper-V
 - Highest friction (no clean REST). Plan: a small set of vetted PowerShell
@@ -209,6 +213,11 @@ type Action struct {
   resource name.
 - **Toasts / status bar** for async task progress and errors.
 - **Help overlay** (`?`) driven by a central keymap; vim-style nav (`j/k/g/G`).
+- **Metrics (decision): polling + inline sparklines.** The detail view keeps a
+  short rolling window (~60s) per resource and renders Unicode sparklines for
+  CPU / memory / network alongside point-in-time values, e.g.
+  `CPU ▁▂▅▇▆▃ 41%`. A background poller (see §3 scheduler) feeds the history;
+  the window length and poll interval are configurable.
 
 ### Bubble Tea model tree
 ```
@@ -226,6 +235,13 @@ State flows one way; providers are called via `tea.Cmd` and return results as
 ---
 
 ## 7. Configuration & Secrets
+
+> **Auth decision: tokens/keys only.** Every provider authenticates with an API
+> token/key wherever the platform supports it — we do **not** store reusable
+> passwords. The single exception is **Hyper-V**, which requires WinRM
+> credentials (username/password or Kerberos). vSphere uses a session login but
+> the credential is exchanged for a session and not persisted long-term.
+
 
 - **Config file:** `~/.config/virttui/config.yaml` (XDG). Declares connections:
   ```yaml
@@ -305,20 +321,26 @@ VirtualizationTUI/
 
 ---
 
-## 11. Open Questions (for review)
+## 11. Decisions & Remaining Questions
 
-1. **Auth scope:** standardize on API tokens/keys everywhere we can (avoid
-   storing passwords)? Hyper-V will still need credentials for WinRM.
-2. **Hyper-V transport:** WinRM/PowerShell vs. a future REST shim — acceptable
-   to defer Hyper-V to Phase 7?
-3. **Caddy target:** manage live Admin API config, or also read/write a
-   `Caddyfile`/JSON on disk?
-4. **Unraid API:** rely on the official Connect GraphQL API (account-linked), or
-   target the local management endpoints?
-5. **Metrics depth:** point-in-time status only, or lightweight polling +
-   sparklines in the detail view?
-6. **Packaging:** Homebrew tap + scoop + raw binaries — priority order?
+### Resolved
+1. **Auth scope — tokens/keys only.** Standardize on API tokens/keys, stored in
+   the OS keyring; no reusable passwords. Hyper-V (WinRM) is the only exception.
+   *(See §7.)*
+2. **Metrics depth — polling + sparklines.** Rolling ~60s history with inline
+   Unicode sparklines for CPU/mem/net in the detail view. *(See §6.)*
+3. **Caddy target — Admin API + on-disk Caddyfile/JSON.** Apply live via `/load`
+   and persist to disk; surface drift between the two. *(See §5.)*
+4. **Workflow — `main` is the stable base; changes land via PRs into `main`.**
 
-> Please review §4 (provider interface), §5 (platform approaches), and §9
-> (roadmap ordering). Once these are agreed I'll start Phase 1 (app shell) and
-> Phase 2 (Proxmox).
+### Still open (not blocking Phase 1/2)
+5. **Hyper-V transport:** WinRM/PowerShell vs. a future REST shim — confirmed OK
+   to defer Hyper-V to Phase 7.
+6. **Unraid API:** official Connect GraphQL API (account-linked) vs. local
+   management endpoints — decide before Phase 6.
+7. **Packaging:** Homebrew tap + scoop + raw binaries — priority order, decided
+   before Phase 8.
+
+> §4 (provider interface), §5 (platform approaches), and §9 (roadmap) stand as
+> the agreed plan. Next up: Phase 1 (app shell + provider interface) and
+> Phase 2 (Proxmox end-to-end).
