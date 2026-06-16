@@ -300,7 +300,7 @@ VirtualizationTUI/
 | **1** | App shell + config/secrets + provider interface ✅ | Navigation, sidebar, table, help, mock provider |
 | **2** | **Proxmox provider (end-to-end)** ✅ | REST client, token auth, TLS pinning, node/qemu/lxc inventory, power/snapshot actions, UPID task polling |
 | **3** | Technitium DNS + Caddy ✅ | DNS zones/records (token API) + Caddy routes with live Admin API ↔ on-disk JSON persistence &amp; drift detection |
-| **4** | TrueNAS | Storage kinds (pools/datasets/shares) |
+| **4** | TrueNAS ✅ | REST v2.0, API-key auth; pools/datasets/shares; enable/disable shares |
 | **5** | VMware vSphere | `govmomi`; heaviest API surface |
 | **6** | Unraid | GraphQL Connect API |
 | **7** | Hyper-V | WinRM/PowerShell; most friction, last |
