@@ -14,10 +14,34 @@ homelab / small-cloud fleet from one place:
 Built in **Go** with **[Bubble Tea](https://github.com/charmbracelet/bubbletea)**,
 distributed as a single static binary.
 
-> **Status:** early design phase. The architecture, provider abstraction, and
-> phased roadmap are documented in **[DESIGN.md](./DESIGN.md)** — please start
-> there. No application code has been written yet; Proxmox VE will be the first
-> fully working integration and establishes the provider pattern.
+> **Status: Phase 1 complete — the app shell is here.** The architecture,
+> provider abstraction, and phased roadmap are documented in
+> **[DESIGN.md](./DESIGN.md)**. Phase 1 ships the navigable TUI (connections
+> sidebar, resource table, detail view with live sparklines, action
+> confirmations, help overlay), the provider interface, and config/secrets
+> handling — running against an in-memory **mock** provider so the UI is usable
+> before real integrations land. **Proxmox VE** is next (Phase 2) and establishes
+> the real provider pattern.
+
+## Quick start
+
+```sh
+# Build
+go build -o virttui ./cmd/virttui
+
+# (optional) write a starter config to $XDG_CONFIG_HOME/virttui/config.yaml
+./virttui --init-config
+
+# Run — with no config it falls back to a built-in mock connection
+./virttui
+
+# Run without mutating actions enabled
+./virttui --read-only
+```
+
+**Keys:** `↑/k ↓/j` move · `←/h →/l` switch sidebar/table · `enter` details ·
+`esc` back · `s` start · `x` stop · `R` reboot · `S` snapshot · `r` refresh ·
+`?` help · `q` quit.
 
 ## How it works (in brief)
 
