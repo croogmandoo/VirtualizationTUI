@@ -21,6 +21,7 @@ import (
 
 	// Register built-in providers via their init() functions.
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/mock"
+	_ "github.com/croogmandoo/virtualizationtui/internal/provider/proxmox"
 )
 
 func main() {

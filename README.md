@@ -54,10 +54,31 @@ touches the UI layer.
 See [DESIGN.md](./DESIGN.md) for the full architecture, per-platform API notes,
 configuration/secrets model, and roadmap.
 
+## Connecting to Proxmox VE
+
+Create an API token in Proxmox (Datacenter → Permissions → API Tokens), then add
+a connection to `config.yaml` and store the token secret in your OS keyring:
+
+```yaml
+connections:
+  - name: pve-01
+    type: proxmox
+    endpoint: https://10.0.0.10:8006
+    auth:
+      kind: token
+      ref: keyring            # secret resolved from the OS keyring (never stored here)
+    tls:
+      fingerprint: "AA:BB:CC:…"  # pin the self-signed cert (recommended for homelabs)
+```
+
+The keyring entry uses service `virttui` and username = the connection name
+(`pve-01`); its value is the full token credential `user@realm!tokenid=secret`.
+For headless/CI use, set `auth.ref: env` and export `VIRTTUI_PVE_01_TOKEN`.
+
 ## Roadmap (high level)
 
-1. App shell + config/secrets + provider interface
-2. **Proxmox VE** end-to-end (reference implementation)
+1. ✅ App shell + config/secrets + provider interface
+2. ✅ **Proxmox VE** end-to-end (reference implementation)
 3. Technitium DNS + Caddy
 4. TrueNAS → 5. VMware vSphere → 6. Unraid → 7. Hyper-V
 8. Polish, packaging, releases

@@ -297,8 +297,8 @@ VirtualizationTUI/
 | Phase | Deliverable | Notes |
 |---|---|---|
 | **0** | This design doc | ✅ you are here |
-| **1** | App shell + config/secrets + provider interface | Navigation, sidebar, table, help, no real APIs |
-| **2** | **Proxmox provider (end-to-end)** | Inventory, power actions, task polling, detail view — the reference pattern |
+| **1** | App shell + config/secrets + provider interface ✅ | Navigation, sidebar, table, help, mock provider |
+| **2** | **Proxmox provider (end-to-end)** ✅ | REST client, token auth, TLS pinning, node/qemu/lxc inventory, power/snapshot actions, UPID task polling |
 | **3** | Technitium DNS + Caddy | Proves non-compute kinds (zones/records, routes) |
 | **4** | TrueNAS | Storage kinds (pools/datasets/shares) |
 | **5** | VMware vSphere | `govmomi`; heaviest API surface |
