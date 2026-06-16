@@ -25,6 +25,7 @@ import (
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/proxmox"
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/technitium"
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/truenas"
+	_ "github.com/croogmandoo/virtualizationtui/internal/provider/vsphere"
 )
 
 func main() {
