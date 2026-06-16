@@ -1,0 +1,15 @@
+# Binaries
+/virttui
+/dist/
+*.exe
+*.test
+*.out
+
+# Go
+/vendor/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
