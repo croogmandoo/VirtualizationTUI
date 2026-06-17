@@ -14,14 +14,15 @@ homelab / small-cloud fleet from one place:
 Built in **Go** with **[Bubble Tea](https://github.com/charmbracelet/bubbletea)**,
 distributed as a single static binary.
 
-> **Status: Phase 1 complete — the app shell is here.** The architecture,
-> provider abstraction, and phased roadmap are documented in
-> **[DESIGN.md](./DESIGN.md)**. Phase 1 ships the navigable TUI (connections
-> sidebar, resource table, detail view with live sparklines, action
-> confirmations, help overlay), the provider interface, and config/secrets
-> handling — running against an in-memory **mock** provider so the UI is usable
-> before real integrations land. **Proxmox VE** is next (Phase 2) and establishes
-> the real provider pattern.
+> **Status: feature-complete (Phases 1–8).** All seven platform integrations —
+> Proxmox VE, VMware vSphere, Hyper-V, TrueNAS, Unraid, Technitium DNS, and
+> Caddy — plus the app shell and the Phase 8 polish (theming, command palette,
+> content-driven columns, cross-poll sparklines, and GoReleaser packaging) are on
+> `main`. The architecture, provider abstraction, and roadmap are documented in
+> **[DESIGN.md](./DESIGN.md)**. Out of the box it runs against an in-memory
+> **mock** provider, so the navigable TUI (connections sidebar, resource table,
+> detail view with live sparklines, command palette, action confirmations, help
+> overlay) works with zero configuration.
 
 ## Install
 
