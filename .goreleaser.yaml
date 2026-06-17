@@ -1,0 +1,70 @@
+# GoReleaser configuration for VirtualizationTUI.
+#
+# Phase 8c ships raw, static, cross-compiled binaries plus a checksums file,
+# attached to GitHub Releases (see DESIGN.md §11, decision 7). Cut a release by
+# pushing a semver tag (e.g. `git tag v0.1.0 && git push origin v0.1.0`); the
+# release workflow runs `goreleaser release`. Try the build locally without
+# publishing via `goreleaser release --snapshot --clean`.
+version: 2
+
+project_name: virttui
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: virttui
+    main: ./cmd/virttui
+    binary: virttui
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    # Windows users expect a zip.
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - DESIGN.md
+      - LICENSE*
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+
+release:
+  draft: false
+  prerelease: auto

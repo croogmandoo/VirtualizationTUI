@@ -304,7 +304,7 @@ VirtualizationTUI/
 | **5** | VMware vSphere ✅ | `govmomi`; VMs/hosts/datastores + VM power ops; tested with vcsim |
 | **6** | Unraid ✅ | Official GraphQL API (x-api-key); array/disks, docker, VMs, shares; start/stop docker & VMs |
 | **7** | Hyper-V ✅ | PowerShell cmdlets over a pluggable runner (WinRM); VMs/host + power ops; unit-tested via a fake runner |
-| **8** | Polish | Command palette, theming, metrics/sparklines, packaging/releases |
+| **8** | Polish ✅ | Theming (5 palettes + live cycle), content-driven table columns, cross-poll sparkline history, fuzzy command palette, and GoReleaser packaging (static binaries + checksums per OS/arch) |
 
 ---
 
@@ -333,15 +333,20 @@ VirtualizationTUI/
    and persist to disk; surface drift between the two. *(See §5.)*
 4. **Workflow — `main` is the stable base; changes land via PRs into `main`.**
 
-### Still open (not blocking Phase 1/2)
+### Resolved during the build (originally open)
 5. ~~**Hyper-V transport:** WinRM/PowerShell vs. a future REST shim~~ —
    **resolved: PowerShell cmdlets over WinRM**, behind a pluggable `CommandRunner`
    so the provider logic is unit-tested with a fake runner. Implemented in Phase 7.
 6. ~~**Unraid API:** official Connect GraphQL API vs. local endpoints~~ —
    **resolved: official GraphQL API** (x-api-key), implemented in Phase 6.
-7. **Packaging:** Homebrew tap + scoop + raw binaries — priority order, decided
-   before Phase 8.
+7. ~~**Packaging:** Homebrew tap + scoop + raw binaries — priority order~~ —
+   **resolved: raw static binaries + checksums** via GoReleaser, attached to
+   GitHub Releases for Linux/macOS/Windows (amd64 + arm64). A Homebrew tap and
+   Scoop bucket are deferred (they need dedicated tap/bucket repos and tokens);
+   the GoReleaser config is structured so they can be added later without
+   reworking the build. Implemented in Phase 8 (`.goreleaser.yaml` +
+   `.github/workflows/release.yml`).
 
-> §4 (provider interface), §5 (platform approaches), and §9 (roadmap) stand as
-> the agreed plan. Next up: Phase 1 (app shell + provider interface) and
-> Phase 2 (Proxmox end-to-end).
+> All seven platform integrations and the Phase 8 polish are complete; every
+> open question above is resolved. §4 (provider interface), §5 (platform
+> approaches), and §9 (roadmap) record the delivered design.
