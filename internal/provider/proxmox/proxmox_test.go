@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -31,6 +32,7 @@ func fixtureServer(t *testing.T) (*Proxmox, *httptest.Server) {
 		writeJSON(w, `{"data":[
 			{"id":"qemu/100","type":"qemu","node":"pve-01","vmid":100,"name":"web-01","status":"running","cpu":0.03,"maxcpu":2,"mem":2254857830,"maxmem":4294967296,"uptime":86400},
 			{"id":"qemu/102","type":"qemu","node":"pve-01","vmid":102,"name":"ci-runner","status":"stopped","cpu":0,"maxmem":4294967296},
+			{"id":"qemu/900","type":"qemu","node":"pve-01","vmid":900,"name":"debian-template","status":"stopped","template":1,"maxmem":2147483648},
 			{"id":"lxc/200","type":"lxc","node":"pve-01","vmid":200,"name":"dns","status":"running","cpu":0.01,"mem":268435456,"maxmem":536870912}
 		]}`)
 	})
@@ -130,6 +132,69 @@ func TestListGuestsFilters(t *testing.T) {
 	}
 	if !stopped {
 		t.Error("expected vm 102 to be stopped")
+	}
+}
+
+func TestListGuestsSkipsTemplates(t *testing.T) {
+	p, _ := fixtureServer(t)
+	vms, err := p.List(context.Background(), provider.KindVM)
+	if err != nil {
+		t.Fatalf("list vms: %v", err)
+	}
+	for _, vm := range vms {
+		if vm.ID == "900" {
+			t.Errorf("template guest 900 should be excluded from the VM list: %+v", vm)
+		}
+	}
+}
+
+func TestSnapshotDefaultNameUnique(t *testing.T) {
+	var snapname string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, `{"data":{"version":"8.1.4"}}`)
+	})
+	mux.HandleFunc("/api2/json/cluster/resources", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, `{"data":[{"id":"qemu/100","type":"qemu","node":"pve-01","vmid":100,"name":"web-01","status":"running"}]}`)
+	})
+	mux.HandleFunc("/api2/json/nodes/pve-01/qemu/100/snapshot", func(w http.ResponseWriter, r *http.Request) {
+		snapname = r.FormValue("snapname")
+		writeJSON(w, `{"data":"UPID:pve-01:00001234:00ABCDEF:65000000:qmsnapshot:100:root@pam:"}`)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	p := New()
+	if err := p.Connect(context.Background(), provider.ConnConfig{Endpoint: srv.URL, Token: "root@pam!test=secret-uuid"}); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	if _, err := p.List(context.Background(), provider.KindVM); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if _, err := p.Do(context.Background(), provider.Action{Verb: "snapshot", Kind: provider.KindVM, Target: "100"}); err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if !regexp.MustCompile(`^snap-100-\d+$`).MatchString(snapname) {
+		t.Errorf("default snapshot name %q should be unique (snap-<vmid>-<unixtime>)", snapname)
+	}
+}
+
+func TestUnauthorizedErrorHint(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api2/json/version", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("401 No ticket"))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	p := New()
+	err := p.Connect(context.Background(), provider.ConnConfig{Endpoint: srv.URL, Token: "bad"})
+	if err == nil {
+		t.Fatal("expected connect to fail on 401")
+	}
+	if !strings.Contains(err.Error(), "authentication failed") {
+		t.Errorf("401 error should hint at the token problem, got: %v", err)
 	}
 }
 
