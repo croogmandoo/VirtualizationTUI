@@ -1,10 +1,12 @@
 // Command virttui is the entrypoint for VirtualizationTUI — a single terminal
 // application for managing a heterogeneous homelab/small-cloud fleet.
 //
-// Phase 1 ships the app shell (navigation, sidebar, resource table, detail view
-// with sparklines, action confirmations, help overlay), the provider abstraction,
-// and config/secrets handling. It runs against an in-memory mock provider so the
-// UI is usable before real integrations (starting with Proxmox) land.
+// It wires the app shell (navigation, sidebar, content-driven resource table,
+// detail view with sparklines, command palette, theming, action confirmations,
+// help overlay) to the provider abstraction and config/secrets handling, then
+// registers the built-in providers (Proxmox, Technitium, Caddy, TrueNAS,
+// vSphere, Unraid, Hyper-V, and an in-memory mock) and runs the Bubble Tea
+// program. Build metadata is injected at release time (see --version).
 package main
 
 import (
@@ -30,13 +32,27 @@ import (
 	_ "github.com/croogmandoo/virtualizationtui/internal/provider/vsphere"
 )
 
+// Build metadata, injected at release time via -ldflags by GoReleaser. They keep
+// their defaults for `go install`/`go build` (which carries no version stamp).
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	var (
-		cfgPath  = flag.String("config", "", "path to config file (default: XDG config dir)")
-		readOnly = flag.Bool("read-only", false, "disable all mutating actions for this session")
-		initCfg  = flag.Bool("init-config", false, "write a default config file and exit")
+		cfgPath     = flag.String("config", "", "path to config file (default: XDG config dir)")
+		readOnly    = flag.Bool("read-only", false, "disable all mutating actions for this session")
+		initCfg     = flag.Bool("init-config", false, "write a default config file and exit")
+		showVersion = flag.Bool("version", false, "print version information and exit")
 	)
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("virttui %s (commit %s, built %s)\n", version, commit, date)
+		return
+	}
 
 	path := *cfgPath
 	if path == "" {

@@ -23,6 +23,22 @@ distributed as a single static binary.
 > before real integrations land. **Proxmox VE** is next (Phase 2) and establishes
 > the real provider pattern.
 
+## Install
+
+**Prebuilt binaries** (recommended): grab the archive for your OS/arch from the
+[Releases](https://github.com/croogmandoo/VirtualizationTUI/releases) page, verify
+it against `checksums.txt`, extract `virttui`, and put it on your `PATH`. Static,
+cross-compiled binaries are published for Linux, macOS, and Windows (amd64 +
+arm64) on every tagged release.
+
+**From source** (needs Go 1.25+):
+
+```sh
+go install github.com/croogmandoo/virtualizationtui/cmd/virttui@latest
+```
+
+Check the build with `virttui --version`.
+
 ## Quick start
 
 ```sh
@@ -151,7 +167,7 @@ documented exception to tokens-only:
 2. ✅ **Proxmox VE** end-to-end (reference implementation)
 3. ✅ Technitium DNS + Caddy
 4. ✅ **TrueNAS** (pools, datasets, shares) → 5. ✅ **VMware vSphere** (VMs, hosts, datastores) → 6. ✅ **Unraid** (array, docker, VMs, shares) → 7. ✅ **Hyper-V** (VMs, host; PowerShell/WinRM)
-8. Polish, packaging, releases
+8. ✅ Polish — theming, content-driven columns, cross-poll sparklines, command palette, packaging/releases (GoReleaser)
 
 ## License
 
