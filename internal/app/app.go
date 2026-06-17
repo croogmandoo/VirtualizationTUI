@@ -14,6 +14,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -62,6 +63,13 @@ type Model struct {
 	focus    focus
 	mode     viewMode
 	showHelp bool
+
+	// command palette state
+	palette       bool
+	paletteInput  textinput.Model
+	paletteAll    []paletteCmd // full command set, rebuilt each time the palette opens
+	paletteShown  []int        // indices into paletteAll matching the current query
+	paletteCursor int
 
 	// confirm modal state
 	confirm     bool
@@ -244,6 +252,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// The command palette, when open, captures all input.
+	if m.palette {
+		return m.handlePaletteKey(msg)
+	}
+
 	// Confirm modal intercepts input first.
 	if m.confirm {
 		switch msg.String() {
@@ -292,6 +305,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Theme):
 		m.cycleTheme()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Palette):
+		m.openPalette()
 		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
@@ -346,11 +363,17 @@ func (m Model) askConfirm(r provider.Resource, verb, desc string) (tea.Model, te
 		m.status = "read-only mode: action blocked"
 		return m, nil
 	}
+	m.queueAction(r, verb, desc)
+	return m, nil
+}
+
+// queueAction opens the confirm modal for a pending action on the current
+// connection. Callers are responsible for any read-only gating.
+func (m *Model) queueAction(r provider.Resource, verb, desc string) {
 	m.confirm = true
 	m.pending = provider.Action{Verb: verb, Kind: r.Kind, Target: r.ID}
 	m.pendingName = m.currentConnName()
 	m.pendingDesc = desc
-	return m, nil
 }
 
 // --- selection helpers ---
@@ -362,24 +385,32 @@ func (m Model) currentConnName() string {
 	return m.conns[m.selConn].Cfg.Name
 }
 
-// moveSidebar changes the selected connection and returns a command to connect
-// (lazily) or reload inventory for the newly-selected connection.
+// moveSidebar changes the selected connection by one step and (lazily) connects
+// or reloads it.
 func (m *Model) moveSidebar(down bool) tea.Cmd {
-	prev := m.selConn
+	target := m.selConn
 	if down {
-		m.selConn++
+		target++
 	} else {
-		m.selConn--
+		target--
 	}
-	if m.selConn < 0 {
-		m.selConn = 0
+	if target < 0 {
+		target = 0
 	}
-	if m.selConn >= len(m.conns) {
-		m.selConn = len(m.conns) - 1
+	if target >= len(m.conns) {
+		target = len(m.conns) - 1
 	}
-	if m.selConn == prev {
+	return m.selectConn(target)
+}
+
+// selectConn switches to the connection at idx, returning a command to connect
+// (lazily) or reload inventory for it. It is a no-op for an out-of-range or
+// already-selected index.
+func (m *Model) selectConn(idx int) tea.Cmd {
+	if idx < 0 || idx >= len(m.conns) || idx == m.selConn {
 		return nil
 	}
+	m.selConn = idx
 	m.rows = nil
 	m.rebuildTable()
 	name := m.currentConnName()
@@ -439,11 +470,11 @@ func (m *Model) applyTableStyles() {
 	m.table.SetStyles(st)
 }
 
-// cycleTheme advances to the next registered theme and restyles the live UI in
-// place, preserving the current selection and any open detail view.
-func (m *Model) cycleTheme() {
-	m.theme = ui.NextTheme(m.theme)
-	m.styles = ui.NewStyles(ui.ThemeByName(m.theme))
+// setTheme switches to a named theme and restyles the live UI in place,
+// preserving the current selection and any open detail view.
+func (m *Model) setTheme(name string) {
+	m.theme = name
+	m.styles = ui.NewStyles(ui.ThemeByName(name))
 	m.applyTableStyles()
 	m.rebuildTable()
 	if m.mode == viewDetail {
@@ -453,6 +484,9 @@ func (m *Model) cycleTheme() {
 	}
 	m.status = "theme: " + m.theme
 }
+
+// cycleTheme advances to the next registered theme.
+func (m *Model) cycleTheme() { m.setTheme(ui.NextTheme(m.theme)) }
 
 // accumulateMetrics threads metric history across polls. Providers that already
 // report a multi-point History (e.g. the mock) keep their own; for point-in-time
@@ -647,6 +681,9 @@ func (m Model) View() string {
 	status := m.styles.StatusBar.Width(m.width).Render(m.statusLine())
 	screen := lipgloss.JoinVertical(lipgloss.Left, header, body, status)
 
+	if m.palette {
+		return m.overlay(screen, m.renderPalette())
+	}
 	if m.showHelp {
 		return m.overlay(screen, m.renderHelp())
 	}

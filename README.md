@@ -41,7 +41,11 @@ go build -o virttui ./cmd/virttui
 
 **Keys:** `↑/k ↓/j` move · `←/h →/l` switch sidebar/table · `enter` details ·
 `esc` back · `s` start · `x` stop · `R` reboot · `S` snapshot · `r` refresh ·
-`t` cycle theme · `?` help · `q` quit.
+`/` command palette · `t` cycle theme · `?` help · `q` quit.
+
+Press `/` (or `:`) to open the **command palette** — a fuzzy launcher for every
+action in context: refresh, switch theme or connection, open details, and (outside
+read-only mode) power actions on the selected resource.
 
 The resource table is **content-driven**: it shows whichever columns the current
 inventory actually carries (CPU/Mem for hypervisors, type/value/TTL for DNS,
