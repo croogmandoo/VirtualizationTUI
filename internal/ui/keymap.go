@@ -17,6 +17,7 @@ type KeyMap struct {
 	Reboot   key.Binding
 	Snapshot key.Binding
 	Palette  key.Binding
+	Theme    key.Binding
 	Help     key.Binding
 	Quit     key.Binding
 }
@@ -36,6 +37,7 @@ func DefaultKeyMap() KeyMap {
 		Reboot:   key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "reboot")),
 		Snapshot: key.NewBinding(key.WithKeys("S"), key.WithHelp("S", "snapshot")),
 		Palette:  key.NewBinding(key.WithKeys("/", ":"), key.WithHelp("/", "palette")),
+		Theme:    key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "cycle theme")),
 		Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 	}
@@ -46,6 +48,6 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Left, k.Right, k.Enter, k.Back},
 		{k.Start, k.Stop, k.Reboot, k.Snapshot},
-		{k.Refresh, k.Palette, k.Help, k.Quit},
+		{k.Refresh, k.Palette, k.Theme, k.Help, k.Quit},
 	}
 }

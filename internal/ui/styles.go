@@ -5,18 +5,11 @@ import (
 	"github.com/croogmandoo/virtualizationtui/internal/provider"
 )
 
-// Palette holds the colours used across the UI.
-var (
-	colAccent = lipgloss.Color("63")  // indigo
-	colMuted  = lipgloss.Color("244") // grey
-	colOK     = lipgloss.Color("42")  // green
-	colWarn   = lipgloss.Color("214") // amber
-	colErr    = lipgloss.Color("196") // red
-	colBg     = lipgloss.Color("236")
-)
-
-// Styles bundles the reusable Lip Gloss styles for the app shell.
+// Styles bundles the reusable Lip Gloss styles for the app shell. It carries the
+// Theme it was built from so status colouring stays consistent with the palette.
 type Styles struct {
+	Theme Theme
+
 	Title       lipgloss.Style
 	Sidebar     lipgloss.Style
 	SidebarItem lipgloss.Style
@@ -29,39 +22,42 @@ type Styles struct {
 	OverlayBox  lipgloss.Style
 }
 
-// NewStyles builds the default style set.
-func NewStyles() Styles {
+// NewStyles builds the style set for a theme.
+func NewStyles(t Theme) Styles {
 	return Styles{
-		Title: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("231")).
-			Background(colAccent).Padding(0, 1),
+		Theme: t,
+		Title: lipgloss.NewStyle().Bold(true).Foreground(t.Fg).
+			Background(t.Accent).Padding(0, 1),
 		Sidebar: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).
-			BorderForeground(colMuted).Padding(0, 1),
-		SidebarItem: lipgloss.NewStyle().Foreground(lipgloss.Color("252")),
-		SidebarSel: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("231")).
-			Background(colAccent),
+			BorderForeground(t.Muted).Padding(0, 1),
+		SidebarItem: lipgloss.NewStyle().Foreground(t.Dim),
+		SidebarSel: lipgloss.NewStyle().Bold(true).Foreground(t.Fg).
+			Background(t.Accent),
 		Pane: lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).
-			BorderForeground(colMuted).Padding(0, 1),
-		StatusBar: lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Background(colBg).Padding(0, 1),
-		Help:      lipgloss.NewStyle().Foreground(colMuted),
-		Key:       lipgloss.NewStyle().Bold(true).Foreground(colAccent),
-		Muted:     lipgloss.NewStyle().Foreground(colMuted),
+			BorderForeground(t.Muted).Padding(0, 1),
+		StatusBar: lipgloss.NewStyle().Foreground(t.Dim).Background(t.Bg).Padding(0, 1),
+		Help:      lipgloss.NewStyle().Foreground(t.Muted),
+		Key:       lipgloss.NewStyle().Bold(true).Foreground(t.Accent),
+		Muted:     lipgloss.NewStyle().Foreground(t.Muted),
 		OverlayBox: lipgloss.NewStyle().Border(lipgloss.DoubleBorder()).
-			BorderForeground(colAccent).Padding(1, 2),
+			BorderForeground(t.Accent).Padding(1, 2),
 	}
 }
 
-// StatusStyle returns a colour-coded style + glyph for a normalized status.
-func StatusStyle(s provider.Status) (lipgloss.Style, string) {
-	switch s {
+// Status returns a colour-coded style + glyph for a normalized status, using the
+// style set's theme palette.
+func (s Styles) Status(st provider.Status) (lipgloss.Style, string) {
+	t := s.Theme
+	switch st {
 	case provider.StatusRunning, provider.StatusOK:
-		return lipgloss.NewStyle().Foreground(colOK), "●"
+		return lipgloss.NewStyle().Foreground(t.OK), "●"
 	case provider.StatusStopped:
-		return lipgloss.NewStyle().Foreground(colMuted), "○"
+		return lipgloss.NewStyle().Foreground(t.Muted), "○"
 	case provider.StatusPaused, provider.StatusDegraded:
-		return lipgloss.NewStyle().Foreground(colWarn), "◐"
+		return lipgloss.NewStyle().Foreground(t.Warn), "◐"
 	case provider.StatusError:
-		return lipgloss.NewStyle().Foreground(colErr), "✗"
+		return lipgloss.NewStyle().Foreground(t.Err), "✗"
 	default:
-		return lipgloss.NewStyle().Foreground(colMuted), "?"
+		return lipgloss.NewStyle().Foreground(t.Muted), "?"
 	}
 }

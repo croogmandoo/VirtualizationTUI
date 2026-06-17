@@ -41,7 +41,16 @@ go build -o virttui ./cmd/virttui
 
 **Keys:** `↑/k ↓/j` move · `←/h →/l` switch sidebar/table · `enter` details ·
 `esc` back · `s` start · `x` stop · `R` reboot · `S` snapshot · `r` refresh ·
-`?` help · `q` quit.
+`t` cycle theme · `?` help · `q` quit.
+
+The resource table is **content-driven**: it shows whichever columns the current
+inventory actually carries (CPU/Mem for hypervisors, type/value/TTL for DNS,
+upstream/match for proxy routes), so no UI change is needed per platform. The
+detail view's **sparklines accumulate across polls**, so even providers that only
+report a point-in-time value build up rolling history while the app runs.
+
+Themes are selectable with `t` or pinned in config (`ui.theme:` — one of
+`default`, `nord`, `dracula`, `gruvbox`, `solarized-light`).
 
 ## How it works (in brief)
 

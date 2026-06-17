@@ -44,13 +44,20 @@ type Model struct {
 	cfg     config.Config
 	styles  ui.Styles
 	keys    ui.KeyMap
+	theme   string
 
 	conns   []*core.Connection
 	selConn int
 
 	table  table.Model
 	rows   []provider.Resource // parallel to table rows (current connection inventory)
+	cols   []string            // dynamic field-column keys, in display order
 	detail viewport.Model
+
+	// metricHist accumulates per-resource metric history across polls, keyed by
+	// resource ID then metric name, so sparklines build up even when a provider
+	// only reports point-in-time values.
+	metricHist map[string]map[string][]float64
 
 	focus    focus
 	mode     viewMode
@@ -65,20 +72,27 @@ type Model struct {
 	status string
 	width  int
 	height int
+	mainW  int // current main-pane content width, for column sizing
 	ready  bool
 }
 
 // New builds the root model from a session and config.
 func New(session *core.Session, cfg config.Config) Model {
+	theme := cfg.UI.Theme
+	if theme == "" {
+		theme = ui.DefaultTheme
+	}
 	return Model{
-		session: session,
-		cfg:     cfg,
-		styles:  ui.NewStyles(),
-		keys:    ui.DefaultKeyMap(),
-		conns:   session.Connections(),
-		focus:   focusSidebar,
-		mode:    viewList,
-		status:  "ready",
+		session:    session,
+		cfg:        cfg,
+		styles:     ui.NewStyles(ui.ThemeByName(theme)),
+		keys:       ui.DefaultKeyMap(),
+		theme:      theme,
+		conns:      session.Connections(),
+		focus:      focusSidebar,
+		mode:       viewList,
+		status:     "ready",
+		metricHist: map[string]map[string][]float64{},
 	}
 }
 
@@ -193,6 +207,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.currentConnName() == msg.conn {
+			m.accumulateMetrics(msg.resources)
 			m.rows = msg.resources
 			m.rebuildTable()
 			m.status = fmt.Sprintf("%s · %d resources · %s", msg.conn, len(msg.resources), time.Now().Format("15:04:05"))
@@ -274,6 +289,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Refresh):
 		m.status = "refreshing…"
 		return m, m.loadCmd(m.currentConnName())
+
+	case key.Matches(msg, m.keys.Theme):
+		m.cycleTheme()
+		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
 		if m.focus == focusSidebar {
@@ -397,42 +416,172 @@ func (m *Model) layout() {
 	if mainW < 20 {
 		mainW = 20
 	}
+	m.mainW = mainW
 	bodyH := m.height - 4 // title + status bar + borders
 
 	m.table = table.New(
-		table.WithColumns(m.columns(mainW)),
+		table.WithColumns(m.columnDefs()),
 		table.WithFocused(m.focus == focusTable),
 		table.WithHeight(bodyH-2),
 	)
-	st := table.DefaultStyles()
-	st.Header = st.Header.Bold(true).Foreground(lipgloss.Color("231")).BorderBottom(true)
-	st.Selected = st.Selected.Bold(true).Foreground(lipgloss.Color("231")).Background(lipgloss.Color("63"))
-	m.table.SetStyles(st)
+	m.applyTableStyles()
 
 	m.detail = viewport.New(mainW, bodyH-2)
 	m.rebuildTable()
 }
 
-func (m Model) columns(width int) []table.Column {
-	// Distribute width across columns.
-	return []table.Column{
-		{Title: "St", Width: 3},
-		{Title: "ID", Width: 6},
-		{Title: "Name", Width: max(10, width-44)},
-		{Title: "Kind", Width: 10},
-		{Title: "CPU", Width: 6},
-		{Title: "Mem", Width: 10},
+// applyTableStyles paints the table header and selection in the current theme.
+func (m *Model) applyTableStyles() {
+	th := m.styles.Theme
+	st := table.DefaultStyles()
+	st.Header = st.Header.Bold(true).Foreground(th.Fg).BorderBottom(true)
+	st.Selected = st.Selected.Bold(true).Foreground(th.Fg).Background(th.Accent)
+	m.table.SetStyles(st)
+}
+
+// cycleTheme advances to the next registered theme and restyles the live UI in
+// place, preserving the current selection and any open detail view.
+func (m *Model) cycleTheme() {
+	m.theme = ui.NextTheme(m.theme)
+	m.styles = ui.NewStyles(ui.ThemeByName(m.theme))
+	m.applyTableStyles()
+	m.rebuildTable()
+	if m.mode == viewDetail {
+		if r, ok := m.selectedResource(); ok {
+			m.renderDetail(r)
+		}
+	}
+	m.status = "theme: " + m.theme
+}
+
+// accumulateMetrics threads metric history across polls. Providers that already
+// report a multi-point History (e.g. the mock) keep their own; for point-in-time
+// providers we append the current value to a per-resource rolling window so
+// sparklines build up over successive polls. Stale resources are pruned because
+// only currently-present IDs are carried into the next map.
+func (m *Model) accumulateMetrics(rs []provider.Resource) {
+	window := m.cfg.UI.MetricsWindow
+	if window <= 0 {
+		window = 24
+	}
+	next := make(map[string]map[string][]float64, len(rs))
+	for i := range rs {
+		r := &rs[i]
+		for j := range r.Metrics {
+			mt := &r.Metrics[j]
+			if len(mt.History) > 1 {
+				continue // provider manages its own history
+			}
+			h := append(m.metricHist[r.ID][mt.Name], mt.Value)
+			if len(h) > window {
+				h = h[len(h)-window:]
+			}
+			if next[r.ID] == nil {
+				next[r.ID] = map[string][]float64{}
+			}
+			next[r.ID][mt.Name] = h
+			mt.History = h
+		}
+	}
+	m.metricHist = next
+}
+
+// fieldColumnPriority orders field keys when there is not enough width to show
+// them all. Keys not listed here are appended afterwards in alphabetical order, so
+// new provider fields still surface without a code change here.
+var fieldColumnPriority = []string{
+	"cpu", "mem", "ip", "node", "os", "type", "value", "ttl",
+	"upstream", "match", "size", "used", "state", "uptime",
+}
+
+// selectFieldColumns derives the dynamic field columns from whatever fields the
+// current rows actually carry — so a DNS connection shows type/value/ttl while a
+// hypervisor shows cpu/mem, with no Kind-specific UI code.
+func selectFieldColumns(rows []provider.Resource) []string {
+	present := map[string]bool{}
+	for _, r := range rows {
+		for k := range r.Fields {
+			present[k] = true
+		}
+	}
+	var cols []string
+	for _, k := range fieldColumnPriority {
+		if present[k] {
+			cols = append(cols, k)
+			delete(present, k)
+		}
+	}
+	rest := make([]string, 0, len(present))
+	for k := range present {
+		rest = append(rest, k)
+	}
+	sort.Strings(rest)
+	cols = append(cols, rest...)
+	// Cap the number of field columns so the table stays readable on narrow terminals.
+	const maxFieldCols = 5
+	if len(cols) > maxFieldCols {
+		cols = cols[:maxFieldCols]
+	}
+	return cols
+}
+
+// columnDefs builds the table column set from the current dynamic field columns
+// and the available main-pane width.
+func (m Model) columnDefs() []table.Column {
+	const (
+		stW    = 3
+		kindW  = 10
+		fieldW = 12
+	)
+	width := m.mainW
+	if width <= 0 {
+		width = 60
+	}
+	cols := []table.Column{{Title: "St", Width: stW}, {Title: "Name"}, {Title: "Kind", Width: kindW}}
+	for _, k := range m.cols {
+		cols = append(cols, table.Column{Title: columnTitle(k), Width: fieldW})
+	}
+	// Name takes whatever is left after the fixed/field columns (with a floor).
+	used := stW + kindW + fieldW*len(m.cols) + 2*len(cols) // +2 per col for padding
+	nameW := width - used
+	if nameW < 12 {
+		nameW = 12
+	}
+	cols[1].Width = nameW
+	return cols
+}
+
+// columnTitle renders a field key as a short, human column header.
+func columnTitle(k string) string {
+	switch k {
+	case "cpu":
+		return "CPU"
+	case "mem":
+		return "Mem"
+	case "ip":
+		return "IP"
+	case "ttl":
+		return "TTL"
+	case "os":
+		return "OS"
+	default:
+		return strings.ToUpper(k[:1]) + k[1:]
 	}
 }
 
 func (m *Model) rebuildTable() {
+	m.cols = selectFieldColumns(m.rows)
+	m.table.SetColumns(m.columnDefs())
+
 	rows := make([]table.Row, 0, len(m.rows))
 	for _, r := range m.rows {
-		_, glyph := ui.StatusStyle(r.Status)
-		rows = append(rows, table.Row{
-			glyph, r.ID, r.Name, string(r.Kind),
-			field(r, "cpu"), field(r, "mem"),
-		})
+		_, glyph := m.styles.Status(r.Status)
+		cells := make(table.Row, 0, 3+len(m.cols))
+		cells = append(cells, glyph, r.Name, string(r.Kind))
+		for _, k := range m.cols {
+			cells = append(cells, field(r, k))
+		}
+		rows = append(rows, cells)
 	}
 	m.table.SetRows(rows)
 	// The bubbles table initialises its cursor to -1 until focused; keep a valid
@@ -451,7 +600,7 @@ func field(r provider.Resource, k string) string {
 
 func (m *Model) renderDetail(r provider.Resource) {
 	var b strings.Builder
-	st, glyph := ui.StatusStyle(r.Status)
+	st, glyph := m.styles.Status(r.Status)
 	fmt.Fprintf(&b, "%s %s  %s\n", st.Render(glyph), lipgloss.NewStyle().Bold(true).Render(r.Name), m.styles.Muted.Render(fmt.Sprintf("(%s · %s)", r.Kind, r.ID)))
 	fmt.Fprintf(&b, "%s %s\n\n", m.styles.Muted.Render("status:"), string(r.Status))
 
