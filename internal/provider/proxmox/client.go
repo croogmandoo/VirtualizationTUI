@@ -115,6 +115,11 @@ func (c *client) do(ctx context.Context, method, path string, params url.Values,
 		if msg == "" {
 			msg = resp.Status
 		}
+		if resp.StatusCode == http.StatusUnauthorized {
+			return fmt.Errorf("proxmox: %s %s: authentication failed — check the API token "+
+				"(expected the full credential user@realm!tokenid=secret) and that it has the "+
+				"required privileges: %s", method, path, firstLine(msg))
+		}
 		return fmt.Errorf("proxmox: %s %s: %s", method, path, firstLine(msg))
 	}
 	if out == nil {

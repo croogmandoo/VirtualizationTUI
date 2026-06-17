@@ -105,6 +105,22 @@ The keyring entry uses service `virttui` and username = the connection name
 (`pve-01`); its value is the full token credential `user@realm!tokenid=secret`.
 For headless/CI use, set `auth.ref: env` and export `VIRTTUI_PVE_01_TOKEN`.
 
+**Validate against a real host.** An opt-in smoke test exercises connect → ping →
+list nodes/VMs/containers (and, optionally, a power action) against a live
+Proxmox. It is skipped unless `PVE_ENDPOINT`/`PVE_TOKEN` are set, so run it from a
+machine that can reach the host:
+
+```sh
+PVE_ENDPOINT=https://172.20.200.250:8006 \
+PVE_TOKEN='root@pam!tui=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' \
+PVE_INSECURE=1 \
+go test ./internal/provider/proxmox -run TestLiveProxmox -v
+```
+
+Pin the cert with `PVE_FINGERPRINT=<sha256>` instead of `PVE_INSECURE=1` for a
+verified connection, and add `PVE_TEST_VMID=<id> PVE_TEST_ACTION=reboot` to also
+exercise a power action and task polling against a throwaway guest.
+
 ## Connecting to Technitium DNS &amp; Caddy
 
 ```yaml

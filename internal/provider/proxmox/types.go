@@ -19,17 +19,18 @@ type nodeEntry struct {
 
 // clusterResource is an item from GET /cluster/resources?type=vm.
 type clusterResource struct {
-	ID     string  `json:"id"`
-	Type   string  `json:"type"` // "qemu" / "lxc"
-	Node   string  `json:"node"`
-	VMID   int     `json:"vmid"`
-	Name   string  `json:"name"`
-	Status string  `json:"status"` // "running" / "stopped"
-	CPU    float64 `json:"cpu"`    // fraction 0..1
-	MaxCPU float64 `json:"maxcpu"`
-	Mem    int64   `json:"mem"`
-	MaxMem int64   `json:"maxmem"`
-	Uptime int64   `json:"uptime"`
+	ID       string  `json:"id"`
+	Type     string  `json:"type"` // "qemu" / "lxc"
+	Node     string  `json:"node"`
+	VMID     int     `json:"vmid"`
+	Name     string  `json:"name"`
+	Status   string  `json:"status"`   // "running" / "stopped"
+	Template int     `json:"template"` // 1 for VM/CT templates (not runnable guests)
+	CPU      float64 `json:"cpu"`      // fraction 0..1
+	MaxCPU   float64 `json:"maxcpu"`
+	Mem      int64   `json:"mem"`
+	MaxMem   int64   `json:"maxmem"`
+	Uptime   int64   `json:"uptime"`
 }
 
 // taskStatus is the result of GET /nodes/{node}/tasks/{upid}/status.

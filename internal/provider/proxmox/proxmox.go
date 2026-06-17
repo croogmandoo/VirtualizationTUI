@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/croogmandoo/virtualizationtui/internal/provider"
 )
@@ -129,6 +130,9 @@ func (p *Proxmox) listGuests(ctx context.Context, gtype string, kind provider.Ki
 		if r.Type != gtype {
 			continue
 		}
+		if r.Template == 1 {
+			continue // templates are clone sources, not runnable guests
+		}
 		id := strconv.Itoa(r.VMID)
 		p.mu.Lock()
 		p.guestNode[id] = guestRef{node: r.Node, gtype: gtype}
@@ -189,7 +193,9 @@ func (p *Proxmox) Do(ctx context.Context, a provider.Action) (provider.ActionRes
 	case "snapshot":
 		name, _ := a.Params["name"].(string)
 		if name == "" {
-			name = "snap-" + a.Target
+			// Include a timestamp so repeated snapshots of the same guest don't
+			// collide on the name (PVE rejects a duplicate snapname).
+			name = fmt.Sprintf("snap-%s-%d", a.Target, time.Now().Unix())
 		}
 		path = base + "/snapshot"
 		params.Set("snapname", name)
